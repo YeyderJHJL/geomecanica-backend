@@ -321,7 +321,7 @@ def generar_json_objetivo(data):
     rmr89 = round(agua["r89"] + res_r89 + rqd_r89 + espac_r89 + condisc89)
 
     fecha_raw = hdr.get("fecha") or hdr.get("fecha_mapeo") or datetime.today().strftime("%Y-%m-%d")
-    campania  = int(fecha_raw[:4]) if fecha_raw else datetime.today().year
+    campania  = _int(hdr.get("campania")) or (int(fecha_raw[:4]) if fecha_raw else datetime.today().year)
 
     return {
         "codigo":              hdr.get("td2") or hdr.get("codigo", ""),
@@ -335,13 +335,13 @@ def generar_json_objetivo(data):
         "este_fin":            _num(hdr.get("finX") or hdr.get("este_fin")),
         "norte_fin":           _num(hdr.get("finY") or hdr.get("norte_fin")),
         "cota_fin":            _num(hdr.get("finC") or hdr.get("cota_fin")),
-        "altura_m":            _num(hdr.get("altura")),
+        "altura_m":            _num(hdr.get("altura") or hdr.get("altura_m")),
         "dip_talud":           _int(hdr.get("dipT") or hdr.get("dip_talud")),
         "lito_1":              hdr.get("lito1") or hdr.get("lito_1") or "",
         "lito_2":              hdr.get("lito2") or hdr.get("lito_2") or "",
         "lito_3":              hdr.get("lito3") or hdr.get("lito_3") or "",
         "unidad_litologica":   hdr.get("lmtM") or hdr.get("unidad_litologica") or "",
-        "alteracion_codigo":   hdr.get("altZona", ""),
+        "alteracion_codigo":   hdr.get("altZona") or hdr.get("alteracion_codigo") or "",
         "intemperismo_codigo": hdr.get("intemp") or hdr.get("intemperismo_codigo") or "",
         "sector":              hdr.get("sector", ""),
         "nivel":               _int(hdr.get("nivel")),
