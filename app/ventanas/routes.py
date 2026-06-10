@@ -1,5 +1,3 @@
-import json
-
 from flask import Blueprint, request, jsonify
 
 from app.database import get_connection
@@ -29,10 +27,9 @@ def api_insertar_ventana():
         if errores:
             return jsonify({"ok": False, "errores": errores}), 422
 
+        import json as _json
         resultado    = generar_json_objetivo(data)
-        resultado_sp = json.loads(json.dumps(resultado))
-        resultado_sp.get("rmr", {}).pop("_calc", None)
-        json_para_sp = json.dumps(resultado_sp, ensure_ascii=False)
+        json_para_sp = _json.dumps(resultado, ensure_ascii=False)
 
         conn = get_connection()
         try:
@@ -73,6 +70,24 @@ def api_insertar_ventana():
             "error": str(e),
             "tipo":  type(e).__name__,
         }), 500
+
+
+@bp.route("/sectores", methods=["GET"])
+def api_sectores():
+    """Lista los sectores únicos registrados en la BD."""
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT DISTINCT sector FROM ventana WHERE sector IS NOT NULL ORDER BY sector"
+            )
+            sectores = [r[0] for r in cur.fetchall()]
+        finally:
+            conn.close()
+        return jsonify(sectores)
+    except Exception:
+        return jsonify([])
 
 
 @bp.route("/ventanas", methods=["GET"])

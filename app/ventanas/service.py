@@ -119,10 +119,10 @@ def listar_ventanas(sector, campania, rmr_min, rmr_max, page, per_page):
         where_clauses.append("b.campania = ?")
         params.append(int(campania))
     if rmr_min is not None:
-        where_clauses.append("r.rmr89 >= ?")
+        where_clauses.append("b.rmr_89 >= ?")
         params.append(float(rmr_min))
     if rmr_max is not None:
-        where_clauses.append("r.rmr89 <= ?")
+        where_clauses.append("b.rmr_89 <= ?")
         params.append(float(rmr_max))
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
@@ -132,25 +132,25 @@ def listar_ventanas(sector, campania, rmr_min, rmr_max, page, per_page):
         SELECT COUNT(*) FROM (
             SELECT DISTINCT b.ventana_id
             FROM vw_bd AS b
-            LEFT JOIN vw_ventana_rmr AS r ON r.ventana_id = b.ventana_id
             {where_sql}
         ) AS cnt
     """
 
     # Datos paginados: cada ventana una sola fila con su RMR
+    # vw_bd usa 'celda' y 'fecha' en lugar de 'codigo' y 'fecha_mapeo'
+    # vw_ventana_rmr tiene columna 'version' (76/89) y 'rmr_total'
     data_sql = f"""
         SELECT * FROM (
             SELECT DISTINCT
                 b.ventana_id,
-                b.codigo,
-                b.fecha_mapeo,
+                b.celda             AS codigo,
+                b.fecha             AS fecha_mapeo,
                 b.mapeador,
                 b.sector,
                 b.campania,
-                r.rmr76,
-                r.rmr89
+                b.rmr_76            AS rmr76,
+                b.rmr_89            AS rmr89
             FROM vw_bd AS b
-            LEFT JOIN vw_ventana_rmr AS r ON r.ventana_id = b.ventana_id
             {where_sql}
         ) AS t
         ORDER BY fecha_mapeo DESC, ventana_id DESC
@@ -194,6 +194,13 @@ def obtener_detalle_ventana(ventana_id):
 
         cur.execute(
             """
+            WITH rmr AS (
+                SELECT ventana_id,
+                    MAX(CASE WHEN version = 76 THEN CAST(rmr_total AS float) END) AS rmr76,
+                    MAX(CASE WHEN version = 89 THEN CAST(rmr_total AS float) END) AS rmr89
+                FROM vw_ventana_rmr
+                GROUP BY ventana_id
+            )
             SELECT
                 v.*,
                 ri.agua_codigo, ri.ucs_mpa, ri.is50_mpa, ri.resistencia_codigo,
@@ -202,7 +209,7 @@ def obtener_detalle_ventana(ventana_id):
                 r.rmr76, r.rmr89
             FROM ventana v
             LEFT JOIN ventana_rmr_input ri ON ri.ventana_id = v.ventana_id
-            LEFT JOIN vw_ventana_rmr    r  ON r.ventana_id  = v.ventana_id
+            LEFT JOIN rmr               r  ON r.ventana_id  = v.ventana_id
             WHERE v.ventana_id = ?
             """,
             ventana_id,
