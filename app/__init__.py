@@ -24,10 +24,12 @@ def create_app():
     from app.ventanas.routes   import bp as ventanas_bp
     from app.importacion.routes import bp as importacion_bp
     from app.dashboard.routes  import bp as dashboard_bp
+    from app.catalogos.routes  import catalogos_bp
 
     app.register_blueprint(ventanas_bp)
     app.register_blueprint(importacion_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(catalogos_bp)
 
     # ── Health ────────────────────────────────────────────────────────────────
     @app.route("/health")
