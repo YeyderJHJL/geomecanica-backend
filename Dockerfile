@@ -1,20 +1,20 @@
 FROM python:3.10-bookworm
 
-RUN apt-get update && apt-get install -y \
-    curl apt-transport-https gnupg2 unixodbc-dev && \
-    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | \
-    gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \
-    curl https://packages.microsoft.com/config/debian/12/prod.list \
-    -o /etc/apt/sources.list.d/mssql-release.list && \
-    sed -i 's/^deb /deb [signed-by=\/usr\/share\/keyrings\/microsoft-prod.gpg] /' \
-    /etc/apt/sources.list.d/mssql-release.list && \
+# Microsoft ODBC Driver 18 for SQL Server (pyodbc dependency).
+# Usa el paquete oficial packages-microsoft-prod.deb que registra el repo
+# y la clave GPG correctamente, sin manipular sources.list a mano.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl gnupg ca-certificates apt-transport-https unixodbc-dev && \
+    curl -fsSL -O https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm packages-microsoft-prod.deb && \
     apt-get update && \
-    ACCEPT_EULA=Y apt-get install -y msodbcsql18 && \
+    ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
