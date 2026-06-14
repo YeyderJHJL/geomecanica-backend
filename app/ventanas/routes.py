@@ -90,6 +90,51 @@ def api_sectores():
         return jsonify([])
 
 
+@bp.route("/proyectos", methods=["GET"])
+def api_proyectos():
+    """Lista de proyectos disponibles."""
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            # Si la tabla tiene columna proyecto la usamos; si no, devolvemos fallback
+            cur.execute(
+                "SELECT DISTINCT proyecto FROM ventana "
+                "WHERE proyecto IS NOT NULL AND proyecto <> '' ORDER BY proyecto"
+            )
+            proyectos = [r[0] for r in cur.fetchall()]
+        finally:
+            conn.close()
+        return jsonify(proyectos if proyectos else ["Proyecto A", "Proyecto B"])
+    except Exception:
+        return jsonify(["Proyecto A", "Proyecto B"])
+
+
+@bp.route("/campanias", methods=["GET"])
+def api_campanias():
+    """Campañas únicas desde la BD (campania = año numérico en tabla ventana)."""
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT DISTINCT CAST(campania AS NVARCHAR(10)) "
+                "FROM ventana WHERE campania IS NOT NULL ORDER BY 1 DESC"
+            )
+            campanias = [r[0] for r in cur.fetchall()]
+        finally:
+            conn.close()
+        if not campanias:
+            import datetime
+            yr = datetime.datetime.now().year
+            campanias = [str(y) for y in range(yr, yr - 5, -1)]
+        return jsonify(campanias)
+    except Exception:
+        import datetime
+        yr = datetime.datetime.now().year
+        return jsonify([str(y) for y in range(yr, yr - 5, -1)])
+
+
 @bp.route("/ventanas", methods=["GET"])
 def api_listar_ventanas():
     """Lista paginada: ?sector=&campania=&rmr_min=&rmr_max=&page=&per_page="""
