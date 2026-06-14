@@ -159,3 +159,87 @@ def obtener_stats_dashboard(sector=None, campania=None):
         "distribucion_calidad": distribucion_calidad,
         "por_sector":           por_sector,
     }
+
+
+def obtener_alertas():
+    """Ejecuta las 4 queries de calidad de datos y devuelve alertas."""
+    alertas = []
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+
+        # Alerta 1: Ventanas sin discontinuidades
+        cur.execute("""
+            SELECT v.codigo
+            FROM ventana v
+            LEFT JOIN discontinuidad d ON d.ventana_id = v.ventana_id
+            WHERE d.discontinuidad_id IS NULL
+            ORDER BY v.codigo
+        """)
+        rows = [r[0] for r in cur.fetchall() if r[0]]
+        if rows:
+            alertas.append({
+                "tipo": "sin_discontinuidades",
+                "nivel": "error",
+                "cantidad": len(rows),
+                "mensaje": f"{len(rows)} ventana(s) registradas sin discontinuidades",
+                "ventanas": rows,
+            })
+
+        # Alerta 2: RMR fuera de rango válido
+        cur.execute("""
+            SELECT DISTINCT v.codigo
+            FROM vw_ventana_rmr r
+            JOIN ventana v ON v.ventana_id = r.ventana_id
+            WHERE r.rmr_total < 10 OR r.rmr_total > 100
+            ORDER BY v.codigo
+        """)
+        rows = [r[0] for r in cur.fetchall() if r[0]]
+        if rows:
+            alertas.append({
+                "tipo": "rmr_fuera_rango",
+                "nivel": "warning",
+                "cantidad": len(rows),
+                "mensaje": f"{len(rows)} ventana(s) con RMR fuera del rango válido (10-100)",
+                "ventanas": rows,
+            })
+
+        # Alerta 3: Coordenadas incompletas (0 o NULL)
+        cur.execute("""
+            SELECT codigo
+            FROM ventana
+            WHERE (este_ini  IS NULL OR este_ini  = 0)
+               OR (norte_ini IS NULL OR norte_ini = 0)
+               OR (dip_talud IS NULL OR dip_talud = 0)
+            ORDER BY codigo
+        """)
+        rows = [r[0] for r in cur.fetchall() if r[0]]
+        if rows:
+            alertas.append({
+                "tipo": "coordenadas_incompletas",
+                "nivel": "warning",
+                "cantidad": len(rows),
+                "mensaje": f"{len(rows)} ventana(s) con coordenadas incompletas",
+                "ventanas": rows,
+            })
+
+        # Alerta 4: Discontinuidades sin espaciamiento
+        cur.execute("""
+            SELECT COUNT(*)
+            FROM discontinuidad
+            WHERE espaciamiento_m IS NULL OR espaciamiento_m = 0
+        """)
+        cantidad = cur.fetchone()[0] or 0
+        if cantidad > 0:
+            alertas.append({
+                "tipo": "sin_espaciamiento",
+                "nivel": "info",
+                "cantidad": cantidad,
+                "mensaje": f"{cantidad} discontinuidad(es) sin espaciamiento registrado",
+                "ventanas": [],
+            })
+
+    finally:
+        conn.close()
+
+    return {"alertas": alertas, "total_alertas": len(alertas)}
