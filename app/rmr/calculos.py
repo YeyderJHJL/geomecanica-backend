@@ -172,7 +172,9 @@ def calc_jv_rqd(rows):
         if prom > 0:
             jv += 1.0 / prom
 
-    rqd_pct = max(0.0, 115.0 - 3.3 * jv)
+    # RQD acotado a [0, 100]%: la fórmula 115 − 3.3·Jv supera 100 con Jv bajo,
+    # y un rqd_pct > 100 caería fuera de RQD_TABLA (fallback erróneo a rating 3).
+    rqd_pct = min(100.0, max(0.0, 115.0 - 3.3 * jv))
     return jv, rqd_pct
 
 
